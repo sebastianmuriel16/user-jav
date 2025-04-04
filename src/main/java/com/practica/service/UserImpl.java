@@ -2,6 +2,8 @@ package com.practica.service;
 
 import com.practica.dto.UserDTO;
 import com.practica.entity.User;
+import com.practica.exception.CustomValidationException;
+import com.practica.exception.NotFoundException;
 import com.practica.mappers.UserMapper;
 import com.practica.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +41,10 @@ public class UserImpl implements UserService {
 
     @Override
     public UserDTO saveNewUser(UserDTO user) {
+        if (userRepository.existsByEmail(user.getEmail())) {
+            throw new CustomValidationException("This email is already being used by another user");
+        }
+
         User savedUser = userMapper.userDtoToUser(user);
         userRepository.save(savedUser);
         UserDTO userDTO = userMapper.userToUserDto(savedUser);
@@ -49,23 +55,26 @@ public class UserImpl implements UserService {
     @Override
     public UserDTO updateUserById(UUID id, UserDTO userDTO) {
 
-        return userRepository.findById(id).
-                map(foundUser -> {
-                    foundUser.setName(userDTO.getName());
-                    foundUser.setLastname(userDTO.getLastname());
-                    foundUser.setEmail(userDTO.getEmail());
+        User foundUser = userRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("User with ID: " + id + " found"));
 
-                    userRepository.save(foundUser);
-                    return userMapper.userToUserDto(foundUser);
+        if (!foundUser.getEmail().equals(userDTO.getEmail()) && userRepository.existsByEmail(userDTO.getEmail())) {
+            throw new CustomValidationException("Email already used");
+        }
 
-                }).orElseThrow(() -> new RuntimeException("User with ID: " + id + " not found"));
+        foundUser.setName(userDTO.getName() != null ? userDTO.getName() : foundUser.getName());
+        foundUser.setLastname(userDTO.getLastname() != null ? userDTO.getLastname() : foundUser.getLastname());
+        foundUser.setEmail(userDTO.getEmail() != null ? userDTO.getEmail() : foundUser.getEmail());
 
+        userRepository.save(foundUser);
+
+        return userMapper.userToUserDto(foundUser);
     }
 
     @Override
     public void deleteUserById(UUID id) {
         if (!userRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User with ID: " + id + " not found");
+            throw new NotFoundException("User with ID: " + id + " not found");
         }
         userRepository.deleteById(id);
     }

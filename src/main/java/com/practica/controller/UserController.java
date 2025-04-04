@@ -1,6 +1,5 @@
 package com.practica.controller;
 
-
 import com.practica.dto.UserDTO;
 import com.practica.service.UserService;
 import jakarta.validation.Valid;
@@ -27,7 +26,7 @@ public class UserController {
     }
 
     @PostMapping(USER_PATH)
-    public ResponseEntity createUser(@RequestBody UserDTO user) {
+    public ResponseEntity createUser(@Valid @RequestBody UserDTO user) {
         UserDTO newUser = userService.saveNewUser(user);
 
         return new ResponseEntity(newUser, HttpStatus.CREATED);
